@@ -1,15 +1,11 @@
 {
-  "name": "nodesample01",
+  "name": "pushmessage",
   "version": "1.0.0",
   "description": "To Publish and Subscribe messages",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Gotham25/nodesample01.git"
   },
   "keywords": [
     "publish",
@@ -20,11 +16,8 @@
   ],
   "author": "Gowtham Alaguraj",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Gotham25/nodesample01/issues"
-  },
-  "homepage": "https://github.com/Gotham25/nodesample01#readme",
   "dependencies": {
-    "websocket": "^1.0.30"
+    "in-memory-queue": "^1.0.3",
+    "websocket": "^1.0.29"
   }
 }

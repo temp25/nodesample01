@@ -7,9 +7,14 @@ const PORT = process.env.PORT || 5000;
 const WebSocketServer = require("websocket").server;
 var http = require("http");
 var fileSystem = require("fs");
+const imqueue = require('in-memory-queue');
+const Promise = require('bluebird');
+imqueue.setQueueConfiguration(10000000, 5);
 
+var serverStartTime;
 var connections = [];
 var clients = [];
+var topics = [];
 
 var server = http.createServer(onRequest);
 var wsServer = new WebSocketServer({
@@ -18,7 +23,13 @@ var wsServer = new WebSocketServer({
 
 //bind to dynamic PORT set by heroku at runtime
 server.listen(PORT, function () {
+    serverStartTime = new Date().getTime();
     console.log((new Date())+"  Webserver listening on PORT " + PORT);
+    var osUptime = require("os").uptime();
+    var osUptimeSince = new Date(Date.now() -  osUptime * 1000 );
+    var processUptime = process.uptime();
+    console.log("System uptime: "+osUptime+" milliseconds  up since "+getFormattedDate(osUptimeSince));
+    console.log("Process uptime: "+processUptime+" seconds");
 });
 
 wsServer.on("request", function (request) {
@@ -30,11 +41,61 @@ wsServer.on("request", function (request) {
 
     connection.on("message", function(message) {
         let data = JSON.parse(message.utf8Data);
-        console.log("\nMessage received from client, type: "+data.type+"\tchannel: "+data.channel+"\ttopic: "+data.topic+"\tvalue: "+data.value+"\n\n")
-        connection.sendUTF(JSON.stringify({
-            type: "ACK",
-            data: "message acknowledged",
-        }));
+        // console.log("\nMessage received from client, type: "+data.type+"\tchannel: "+data.channel+"\ttopic: "+data.topic+"\tvalue: "+data.value+"\n\n")
+        // connection.sendUTF(JSON.stringify({
+        //     type: "ACK",
+        //     data: "message acknowledged",
+        // }));
+
+        let msgType = data.type;
+        let msgTopic = data.topic;
+        let msgPayload = data.value;
+
+        if(msgType === "publish" || msgType === "subscribe") {
+            
+            //Create topic if not exists
+            if(topics.indexOf(msgTopic) === -1){
+                topics.push(msgTopic);
+                imqueue.createTopic(msgTopic).then((result)=>{ 
+                    if(result.topic === msgTopic && result.success){
+                        console.log(`Created topic, '${msgTopic}'`);
+                    }
+                    return;
+                });
+            }
+
+            if(msgType === "publish") {
+                let jsonMsg = {msgData: msgPayload};
+                imqueue.createMessage(msgTopic, JSON.stringify(jsonMsg))
+                .then((result) => {
+                    let msg = result.message;
+                    console.log(`\nMessage topic ${msg.getId()}`);
+                    console.log(`Message topic ${msg.getTopic()}`);
+                    console.log(`Message created timestamp ${msg.getCreated()}`);
+                    console.log(`Message allowed retries ${msg.getAllowedRetries()}`);
+                    console.log(`Message value ${msg.getValue()}`);
+                    console.log(`Message processed ${msg.getProcessed()}\n`);
+                });
+            } else {
+                imqueue.createConsumer(msgTopic, 1, function (msg) {
+                    //console.log(`Handler task executing ${msg.getValue()}`);
+                    connection.sendUTF(JSON.stringify({
+                        topic: msgTopic,
+                        type: "message",
+                        data: JSON.parse(msg.getValue()).msgData,
+                    }));
+                    return Promise.resolve();
+                }).then((consumer)=> {
+                    console.log(`Consumer id ${consumer.getId()}`);
+                    console.log(`Consumer topic ${consumer.getTopic()}`);
+                    console.log(`Consumer priority ${consumer.getPriority()}`);
+                });
+            }
+        } else {
+            //TODO: Add other endpoints here
+        }
+
+
     });
 
     connection.on("close", function(conn) {
@@ -95,4 +156,11 @@ function serveFile(response, filePath, contentType) {
         response.write(String(fileContent));
         response.end();
     });
+}
+
+function getFormattedDate(unformattedDate){
+    var d = unformattedDate;
+    var timeZone = d.toTimeString().substring(d.toTimeString().indexOf(" "));
+    d = d.getFullYear() + "-" + ('0' + (d.getMonth() + 1)).slice(-2) + "-" + ('0' + d.getDate()).slice(-2) + " " + ('0' + d.getHours()).slice(-2) + ":" + ('0' + d.getMinutes()).slice(-2) + ":" + ('0' + d.getSeconds()).slice(-2)+" "+timeZone;
+    return d;
 }
