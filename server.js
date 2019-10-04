@@ -91,6 +91,27 @@ wsServer.on("request", function (request) {
                     console.log(`Consumer priority ${consumer.getPriority()}`);
                 });
             }
+        } else if(msgType === "status") {
+            imqueue.getStatus().then((result)=> {
+                console.log(`Queue size : ${result.size}`);
+                console.log(`Message in queue : ${result.messages_in_queue}`); // returns the current number of message in queue
+                console.log(`Queue max retrys : ${result.retries}`);
+                console.log("\nresult:\n"+JSON.stringify(result)+"\n");
+            });
+        } else if(msgType === "consumers") {
+            imqueue.getConsumersForTopic(msgTopic).then((result)=> {
+                // console.log(`Queue size : ${result.size}`);
+                // console.log(`Message in queue : ${result.messages_in_queue}`); // returns the current number of message in queue
+                // console.log(`Queue max retrys : ${result.retries}`);
+                console.log("\nconsumers result:\n"+JSON.stringify(result)+"\n");
+            });
+        } else if(msgType === "topics") {
+            imqueue.getTopics().then((result)=> {
+                // console.log(`Queue size : ${result.size}`);
+                // console.log(`Message in queue : ${result.messages_in_queue}`); // returns the current number of message in queue
+                // console.log(`Queue max retrys : ${result.retries}`);
+                console.log("\nconsumers topics:\n"+JSON.stringify(result)+"\n");
+            });
         } else {
             //TODO: Add other endpoints here
         }

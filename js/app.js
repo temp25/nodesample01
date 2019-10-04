@@ -4,10 +4,17 @@ var host = location.origin.replace(/^http/, 'ws').replace(/^https/, 'wss');
 
 var connection = new WebSocket(host);
 var msgTopic = "Topic#03102019";
+var subscribedTopic = "";
 
 connection.onopen = function() {
     console.log("connection established...");
-    subscribeToTopic(msgTopic);
+    //subscribeToTopic(msgTopic);
+    console.log("\nSubscribed to topic "+subscribedTopic+"\n");
+    connection.send(JSON.stringify({
+        type: "subscribe",
+        topic: subscribedTopic,
+    }));
+
 };
 
 // connection.onmessage = function(message) {
@@ -20,8 +27,8 @@ connection.onopen = function() {
 connection.onmessage = function(message) {
     let msg = JSON.parse(message.data);
     if(msg.type == "message") {
-        if (msg.topic == msgTopic) {
-            console.log("\nReceived message from topic "+msgTopic+"\nMessage: "+msg.data+"\n");
+        if (msg.topic == subscribedTopic) { //msgTopic
+            console.log("\nReceived message from topic "+subscribedTopic+"\nMessage: "+msg.data+"\n");
         }
     }
 }
@@ -30,18 +37,34 @@ connection.onerror = function(error) {
     console.error("connection error...");
 };
 
-function sendmessage() {
+function sendmessage(_topic) {
     connection.send(JSON.stringify({
         type: "publish",
-        topic: msgTopic,
+        topic: _topic, //msgTopic,
         value: "test message "+new Date().getTime(),
     }));
 }
 
-function subscribeToTopic(topic) {
-    console.log("\nSubscribed to topic "+topic+"\n");
+function getStatus() {
     connection.send(JSON.stringify({
-        type: "subscribe",
-        topic: topic,
+        type: "status",
+    }));
+}
+
+function subscribeToTopic(topic) {
+    subscribedTopic = topic;
+    console.log("Topic subscription received for "+topic);
+}
+
+function getConsumers(_topic) {
+    connection.send(JSON.stringify({
+        type: "consumers",
+        topic: _topic,
+    }));
+}
+
+function getTopics() {
+    connection.send(JSON.stringify({
+        type: "topics",
     }));
 }
